@@ -1,0 +1,403 @@
+	Eclipse Steady 3.2.5 (Incubator Project)Analysis	
+
+Search
+
+
+
+Type to start searching
+
+Eclipse Steady 3.2.5 (Incubator Project)
+
+ eclipse/steady
+
+499 Stars125 Forks
+
+ 
+
+Home
+
+Home
+
+Home
+
+About
+
+User Guide
+
+User Guide
+
+User Guide
+
+Tutorials
+
+Tutorials
+
+Getting started
+
+Workspace
+
+Workspaces (advanced)
+
+Scanning Java (Maven)
+
+Scanning Java (Gradle)
+
+Scanning Java (CLI)
+
+Reachability analysis (Java/Maven)
+
+Scanning Python (CLI)
+
+Jenkins automation
+
+Understanding reports
+
+Manual
+
+Manual
+
+Intro
+
+Configuration
+
+Analysis
+
+Table of contents
+
+Overview
+
+Bill of material analysis (app)
+
+Reachable from app (a2c)
+
+Dynamic instrumentation (JUnit)
+
+Dynamic instrumentation (JVM)
+
+Static instrumentation (instr)
+
+Reachable from traces (t2c)
+
+Analyze unconfirmed vulnerabilities (checkcode)
+
+Upload analysis files (upload)
+
+Create result report (report)
+
+Clean and delete apps (clean)
+
+Clean workspaces (cleanspace)
+
+Frontend
+
+Report
+
+Impact Assessment and Mitigation
+
+Library Assessment
+
+Updating Vulnerability Data
+
+Support
+
+Support
+
+Getting help
+
+FAQ
+
+DevOps
+
+DevOps
+
+DevOps
+
+Tutorials
+
+Tutorials
+
+Deploy on Docker
+
+Build JAVA archives/Docker images
+
+Push Docker images to a registry
+
+Contribute
+
+Contribute
+
+Contribute
+
+Tutorials
+
+Tutorials
+
+Project structure
+
+Vulnerability data
+
+Blog
+
+Blog
+
+None
+
+Analysis Manual¶
+
+Overview¶
+
+The various client-side tools offer so-called goals in order to analyze applications and interact with the backend.
+
+The following goals perform some sort of application analysis:
+
+app: Creates a method-level bill of material of an application and all its dependencies.
+
+a2c: Builds a call graph (starting from app methods) and checks whether vulnerable code is potentially executable (reachable).
+
+test: This is not an actual goal implemented by any of the clients, but describes the collection of execution traces by a so-called Java agent that dynamically instruments Java bytecode during JUnit and integration tests.
+
+instr: Produces a modified version of Java archives (static instrumentation) that can be deployed/executed in order to collect traces of actual method executions.
+
+t2c: Builds a call graph (starting from traced methods) and checks whether vulnerable code is potentially reachable from those.
+
+checkcode Downloads unconfirmed vulnerabilities from the backend to the client, and checks whether the affected dependencies contain vulnerable of fixed constructs.
+
+The following goals are related to data management and reporting:
+
+upload: Uploads analysis data previously written to disk to the backend
+
+report: Downloads analysis data from the backend to the client, produces a result report (HTML, XML, JSON), and throws a build exception in order to break Jenkins jobs
+
+clean: Cleans the analysis data of a single app in the backend
+
+cleanspace: Cleans an entire workspace in the backend
+
+Which goals are supported by the different clients, and how-to configure and execute them is explained in the following subsections.
+
+Note that all goal executions (including configuration settings and statistics) are shown on the "History" tab of the respective applications.
+
+Important: Make sure to understand the following before proceeding:
+
+app has to be executed before all the other analysis goals in order to detect all application dependencies with vulnerable code.
+
+Once it has been run, the assessment of findings can already start, each finding of app shown on the "Vulnerabilities" tab corresponds to a dependency of an application on a component with a known security vulnerability. The number of findings will not change when running other analysis goals. Instead, a2c, test and t2c try to collect evidence concerning the potential or actual execution of vulnerable code brought up by app.
+
+Assess every finding, no matter whether a2c, test and t2c were able to collect evidence or not. Not finding such evidence does not mean that vulnerabilities cannot be exploited. The absence of proof is not a proof of absence (of exploitable vulnerabilities).
+
+Prerequisites:
+
+A workspace has been created and its token is known
+
+Java 7 or later is installed
+
+Maven: The plugin is available in the local .m2 repository or in a Nexus repository configured in settings.xml (see here for more information on how to configure Maven)
+
+Limitations:
+
+The reachability analysis (goals a2c and t2c) does not work with Java 9, as the underlying analysis frameworks do not support it.
+
+Prerequisites
+
+A workspace has been created and its token is known
+
+Java 7 or later is installed
+
+Maven: The Eclipse Steady Maven plugin must be available in the local .m2 repository or in a Nexus repository configured in settings.xml (see here for more information on how to configure Maven)
+
+Java 9 support
+
+The reachability analysis (goals a2c and t2c) is not supported with Java 9, due to limitations of the 3rd-party analysis frameworks that Eclipse Steady relies upon.
+
+Bill of material analysis (app)¶
+
+Objective¶
+
+Create a complete bill of material (BOM) of the application and of all its dependencies (direct and transitive). Most importantly, the BOM comprises the signatures of all methods of the application and all dependencies, which is compared with a list of methods known to be vulnerable. Moreover, the BOM also comprises meta-info on archive level, e.g., the manifest file entries or the archive's digest (SHA1 in case of Java archives, MD5 in case of Python).
+
+Result¶
+
+In the Eclipse Steady frontend, the table in tab "Dependencies" is populated. In case any of the dependencies has vulnerabilities, they are shown in tab "Vulnerabilities". The column "Inclusion of vulnerable code" indicates whether the version in use is known to be vulnerable or not (see tooltip for more information).
+
+Important¶
+
+By default, the Maven plugin searches for application source and compiled code in the folders src/main/java and target/classes. If source or byte code is generated or modified during the build process, and stored in other folders than the ones mentioned, you need to add those directories using the parameter vulas.core.app.sourceDir. Otherwise, the respective code will not be recognized as application code, hence, ignored when performing the reachability analysis. Example: Suppose source code is generated into the folder target/generated-sources. If this code is compiled into the folder target/classes, you do not need to do anything. If it is compiled into a different folder, you would need to add this folder to entries of vulas.core.app.sourceDir.
+
+Run as follows¶
+
+CLI
+
+java -jar steady-cli-3.2.5-jar-with-dependencies.jar -goal app
+
+Maven
+
+Gradle
+
+Configure as follows¶
+
+# Where application source or bytecode and application dependencies (JAR and/or WAR files) are located
+
+# Relative or absolute paths, multiple values to be separated by comma
+
+vulas.core.app.sourceDir =
+
+# Whether or not empty apps (w/o constructs and dependencies) are uploaded to the backend
+
+vulas.core.app.uploadEmpty = false
+
+# When true, JAR not known to Eclipse Steady Maven central and not already available to the backend are posted to the backend
+
+vulas.core.app.uploadLibrary = false
+
+# Number of worker threads analyzing the JAR files from which classes are loaded
+
+vulas.core.jarAnalysis.poolSize = 4
+
+# Package prefix(es) of application code (multiple values to be separated by comma)
+
+# Default:
+
+#   CLI: -
+
+# Note: Ignored when running the Maven plugin. In all other cases it avoids the separation of application and dependency JARs into distinct folders
+
+vulas.core.app.appPrefixes =
+
+# Regex that identifies JARs with application code (multiple values to be separated by comma)
+
+# Default:
+
+#   CLI: -
+
+# Note: Ignored when running the Maven plugin. In all other cases it avoids the separation of application and dependency JARs into distinct folders
+
+vulas.core.app.appJarNames =
+
+Reachable from app (a2c)¶
+
+Objectives¶
+
+Check whether vulnerable methods are reachable, i.e., whether the application can be run in a way that a vulnerable method is executed.
+
+Identify all so-called touch points, which are direct calls from an application method to a library method.
+
+Collect all reachable methods for every dependency of the application.
+
+The first objective supports the risk assessment for a given vulnerability, while the second and third objectives primarily support the mitigation. Depending on the size of the application, the reachability analysis can consume a considerable amount of resources (time and memory). It is not seldom that it runs for several hours.
+
+Limitations¶
+
+Python is not supported
+
+Java 9 and later versions are only supported when using Soot as call graph construction framework
+
+Result¶
+
+In the Eclipse Steady frontend, tab "Vulnerabilities", the column "Static Analysis" is populated for all libraries subject to known vulnerabilities. By selecting single row of this table and the one of the detailed page, one can get more information up until the paths of potential executions (if any).
+
+How does it work¶
+
+Eclipse Steady uses Wala or Soot, both static analysis frameworks for Java, in order to construct a call graph representing all possible program executions starting from application methods. This graph is traversed in order to see whether and from where methods with known vulnerabilities can be reached.
+
+Run as follows¶
+
+CLI
+
+java -Xmx8g -Xms2g -jar steady-cli-3.2.5-jar-with-dependencies.jar -goal a2c
+
+Maven
+
+Gradle
+
+Configure as follows¶
+
+The following configuration options apply to the reachability analysis no matter which call graph construction framework is used. See below for framework-specific configuration options.
+
+# Limits the analysis to certain bugs (multiple values separated by comma)
+
+# If empty, all relevant bugs retrieved from backend will be considered
+
+# Default: empty
+
+vulas.reach.bugs =
+
+# Analysis framework to be used
+
+# Possible values: wala, soot
+
+vulas.reach.fwk = soot
+
+# Regex to filter entry points (semicolon separated)
+
+vulas.reach.constructFilter =
+
+# All packages to be excluded from call graph construction, packages
+
+# are separated by semicolon e.g. [java/.*;sun/.*]. Defaults for the different
+
+# analysis frameworks are provided in the respective configuration files. -->
+
+vulas.reach.excludePackages =
+
+# All JAR files to be excluded from call graph construction (multiple entries to be separated by comma)
+
+#
+
+# Default: WebServicesAgent.jar (from Wily Introscope, an app perf monitoring tool that has invalid manifest header fields creating problems for Wala)
+
+vulas.reach.excludeJars = WebServicesAgent.jar
+
+# Dir to search for app source files (only steady:a2c)
+
+# If empty, they will be fetched from backend
+
+vulas.reach.sourceDir =
+
+# Timeout for reachability analysis (in mins)
+
+# Default: 120 mins
+
+vulas.reach.timeout = 120
+
+# Max number of paths uploaded for a reachable change list element
+
+vulas.reach.maxPathPerChangeListElement = 10
+
+# Whether or not to collect touch points
+
+# Default: true
+
+vulas.reach.identifyTouchpoints = true
+
+# Whether to search for the shortest path(s) from entry points to vulnerable constructs, or to quit after the first path found
+
+# Default: true
+
+vulas.reach.searchShortest = true
+
+Call graph construction framework¶
+
+Behind the scene, a source code analysis framework is used to construct the call graph, either starting from application methods (a2c) or from traced methods (t2c). Right now, the two frameworks Wala and Soot are supported and can be configured with vulas.reach.fwk. Both offer several configuration options to influence the accuracy of the call graph and its construction time. Once the call graph has been constructed, its size (in terms of nodes and edges) is printed to the console, which is useful for comparing the impact of the different configuration options, e.g.
+
+[vulas-reach-1] INFO  com.sap.psr.vulas.cg.wala.WalaCallgraphConstructor  - Normalized call graph has [167639 nodes] (with distinct ConstructId) and [1279495 edges]
+
+WALA¶
+
+The setting vulas.reach.wala.callgraph.algorithm determines the construction algorithm to be used. From RTA (Rapid Type Analysis) to 0-1-ctn-CFA, the call graph becomes more accurate, but the construction takes more time. A more accurate call graph means that it contains less false-positives, i.e., method invocations that cannot happen during actual program execution. As a rule of thumb, a call graph constructed with RTA contains more nodes and edges than one constructed with 0-1-ctn-CFA. Note the following before choosing a more simple algorithm: The increase of nodes and edges resulting from, for instance, the choice of RTA, has a negative impact on the performance of the later analysis phases. As such, it may be worth to spend more time on the graph construction. See here, there and there for more information regarding the difference of call graph construction algorithms.
+
+# Possible values: 0-CFA; 0-ctn-CFA; vanilla-0-1-CFA; 0-1-CFA; 0-1-ctn-CFA
+
+# Default algorithm: 0-1-CFA
+
+vulas.reach.wala.callgraph.algorithm = 0-1-CFA
+
+The setting vulas.reach.wala.callgraph.reflection determines the consideration of reflection, which is commonly used to instantiate and invoke classes and methods. See here for more information.
+
+# Reflection option to be used for call graph construction
+
+# Possible values: FULL; NO_METHOD_INVOKE; NO_STRING_CONSTANTS; APPLICATION_GET_METHOD
+
+# Possible values: NONE; NO_FLOW_TO_CASTS; NO_FLOW_TO_CASTS_NO_METHOD_INVOKE; ONE_FLOW_TO_CASTS_NO_METHOD_INVOKE; NO_FLOW_TO_CASTS_APPLICATION_GET_METHOD; ONE_FLOW_TO_CASTS_APPLICATION_GET_METHOD
+
+# Default value: NO_FLOW_TO_CASTS_NO_METHOD_INVOKE
+
+vulas.reach.wala.callgraph.reflection = NO_FLOW_TO_CASTS_NO_METHOD_INVOKE
